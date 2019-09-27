@@ -1,12 +1,10 @@
 const WebSocket = require('./ReconnectingWebSocket.js');
 const fs = require('fs');
-const mysql = require('mysql');
+const { Pool } = require('pg');
+const connectionString = "postgresql+psycopg2:///pajbot?options=-c%%20search_path%%3Dpajbot1_bulldog"
 
-const pool = mysql.createPool({
-    host: "localhost",
-    user: "bullbot",
-    password: fs.readFileSync('/srv/gsibot/password.txt', "utf8"),
-    database: "bullbot"
+const pool = new Pool({
+    connectionString: connectionString
 });
 
 const wss = new WebSocket('wss://chatbot.admiralbulldog.live/clrsocket', {
@@ -52,12 +50,12 @@ server.events.on('newclient', function(client) {
     }
 
     client.on('player:activity', function(activity) {
-        if (client.gamestate.map.customgamename !== '' || 'team2' in client.gamestate.player) {
+        if (client.gamestate.map.customgamename !== '' || 'team2' in client.gamestate.player || client.auth.token != correctAuth) {
             return;
         }
         console.log("New activity: " + activity);
         if (activity == "playing") {
-            if (client.gamestate.map.game_time < 20 && !(betsExist)) {
+            if (client.gamestate.map.game_time < 20 && client.gamestate.map.name == "start") {
                 betsExist = true;
                 wss.send(JSON.stringify({
                     "event": "open_bets"
@@ -183,7 +181,7 @@ server.events.on('newclient', function(client) {
             playSound(roonsSelections[Math.floor(Math.random() * roonsSelections.length)]);
         }
 
-        if (time == 15 && client.gamestate.previously.map.clock_time < 15) {
+        if (time == 15 && client.gamestate.previously.map.clock_time < 15 && client.gamestate.map.name == "start") {
             wss.send(JSON.stringify({
                 "event": "lock_bets"
             }))
@@ -310,22 +308,28 @@ function playSound(url, volume = 100) {
         console.log("Not ready");
     }
 
-    pool.query("SELECT volume FROM tb_playsound WHERE link = ?", [url], function(err, res) {
-        if (res && res.length >= 1) {
-            volume = res[0].volume;
-        }
-
-        volume = Math.round(volume * 0.4); // Playsound volumes are on global 0.4 scale
-
-        console.log("Playing " + url + " with volume " + volume);
-        wss.send(JSON.stringify({
-            "event": "play_sound",
-            "data": {
-                "link": url,
-                "volume": volume
+    ;(async () => {
+        const client = await pool.connect();
+        try {
+            const res = await client.query("SELECT volume FROM playsound WHERE link = $1", [url]);
+            if (res && res.length >= 1) {
+                volume = res[0].volume;
             }
-        }))
-    });
+
+            volume = Math.round(volume * 0.4); // Playsound volumes are on global 0.4 scale
+
+            console.log("Playing " + url + " with volume " + volume);
+            wss.send(JSON.stringify({
+                "event": "play_sound",
+                "data": {
+                    "link": url,
+                    "volume": volume
+                }
+            }));
+        } finally {
+            client.release();
+        }
+    })().catch(e => console.log(e.stack))
 }
 
 function updatePercent(isRadiant, isDraw, winPct) {
