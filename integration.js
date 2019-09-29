@@ -8,8 +8,6 @@ const pool = new Pool({
 });
 
 const wss = new WebSocket('wss://chatbot.admiralbulldog.live/clrsocket', {
-    cert: fs.readFileSync('/etc/letsencrypt/live/chatbot.admiralbulldog.live/cert.pem'),
-    key: fs.readFileSync('/etc/letsencrypt/live/chatbot.admiralbulldog.live/privkey.pem'),
     rejectUnauthorized: false
 });
 
