@@ -1,10 +1,14 @@
 const WebSocket = require('./ReconnectingWebSocket.js');
 const fs = require('fs');
 const { Pool } = require('pg');
-const connectionString = "postgresql+psycopg2:///pajbot?options=-c%%20search_path%%3Dpajbot1_bulldog"
 
 const pool = new Pool({
-    connectionString: connectionString
+    host: "/var/run/postgresql",
+    database: "pajbot"
+});
+
+pool.on('connect', (client) => {
+    client.query("SET search_path TO pajbot1_bulldog, public");
 });
 
 const wss = new WebSocket('wss://chatbot.admiralbulldog.live/clrsocket', {
@@ -306,12 +310,13 @@ function playSound(url, volume = 100) {
         console.log("Not ready");
     }
 
-    ;(async () => {
-        const client = await pool.connect();
-        try {
-            const res = await client.query("SELECT volume FROM playsound WHERE link = $1", [url]);
-            if (res && res.length >= 1) {
-                volume = res[0].volume;
+    (async () => {
+        pool.query("SELECT volume FROM playsound WHERE link = $1", [url], function(err, res) {
+            if (err) throw err;
+
+            if (res.rows && res.rows.length >= 1) {
+                console.log(res.rows);
+                volume = res.rows[0].volume;
             }
 
             volume = Math.round(volume * 0.4); // Playsound volumes are on global 0.4 scale
@@ -324,10 +329,8 @@ function playSound(url, volume = 100) {
                     "volume": volume
                 }
             }));
-        } finally {
-            client.release();
-        }
-    })().catch(e => console.log(e.stack))
+        });
+    })()
 }
 
 function updatePercent(isRadiant, isDraw, winPct) {
