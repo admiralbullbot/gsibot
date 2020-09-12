@@ -192,12 +192,12 @@ server.events.on('newclient', function (client) {
         }
     });
 
-    client.on('hero:smoked', function (issmoked) {
+    client.on('hero:smoked', function (isSmoked) {
         if (client.auth.token != correctAuth) {
             return;
         }
 
-        if (issmoked && Math.random() >= 0.8) {
+        if (isSmoked && Math.random() >= 0.8) {
             playSound('https://admiralbullbot.github.io/playsounds/files/new/weed.ogg');
         }
     });
