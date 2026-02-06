@@ -82,12 +82,6 @@ server.events.on('newclient', function (client) {
         }, 2500);
     });
 
-    client.on('hero:level', function (level) {
-        // console.log(client.gamestate.hero.name);
-        // console.log("Now level " + level);
-        // console.log(wss.readyState);
-    });
-
     client.on('hero:name', function (name) {
         if (client.auth.token != correctAuth) {
             return;
@@ -104,7 +98,7 @@ server.events.on('newclient', function (client) {
 
         try {
             if (!('radiant_win_chance' in data.map) && winPercentExists) {
-                // stopWin();
+                stopWin();
                 winPercentExists = false;
             }
 
@@ -114,9 +108,9 @@ server.events.on('newclient', function (client) {
             ) {
                 if (!winPercentExists) {
                     winPercentExists = true;
-                    // wss.send(JSON.stringify({
-                    //   "event": "win_percent_open"
-                    // }))
+                    wss.send(JSON.stringify({
+                      "event": "win_percent_open"
+                    }))
                 }
                 isDraw = false;
                 isRadiant = true;
@@ -127,7 +121,7 @@ server.events.on('newclient', function (client) {
                     isRadiant = false;
                     winChance = 100 - winChance;
                 }
-                // updatePercent(isRadiant, isDraw, winChance.toString() + "%");
+                updatePercent(isRadiant, isDraw, winChance.toString() + "%");
             }
 
             if ('team2' in data.player) {
@@ -216,7 +210,7 @@ server.events.on('newclient', function (client) {
             }, 3000);
         }
 
-        if (!isAlive && Math.floor(Math.random() * 16) == 1) {
+        if (!isAlive && client.gamestate.hero.respawn_seconds > 5 && Math.floor(Math.random() * 16) == 1) {
             playSound(
                 deathSelections[
                     Math.floor(Math.random() * deathSelections.length)
@@ -254,14 +248,6 @@ server.events.on('newclient', function (client) {
             })
         );
         betsExist = false;
-    });
-
-    client.on('hero:has_debuff', function (name) {
-        // console.log("Has debuff " + name)
-    });
-
-    client.on('hero:buyback_cooldown', function (name) {
-        // console.log("Cooldown is " + name)
     });
 });
 
